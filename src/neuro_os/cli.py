@@ -147,6 +147,26 @@ def brainflow_smoke(
     )
 
 
+@app.command("inspect-board")
+def inspect_board(
+    board_id: Annotated[int, typer.Option()] = -1,
+    serial_port: Annotated[str | None, typer.Option()] = None,
+) -> None:
+    """Print BrainFlow board metadata without exposing EEG samples."""
+    source = BrainFlowSource(
+        BrainFlowSourceConfig(board_id=board_id, serial_port=serial_port)
+    )
+    try:
+        source.open()
+        info = source.board_info
+    except BrainFlowUnavailableError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    finally:
+        source.close()
+
+    typer.echo(json.dumps(dataclasses.asdict(info), indent=2))
+
+
 @app.command("serve-stimulus")
 def serve_stimulus_command(
     board_id: Annotated[int, typer.Option()] = -1,
