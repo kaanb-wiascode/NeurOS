@@ -59,7 +59,11 @@ class BrainFlowSource:
             return
 
         try:
-            from brainflow.board_shim import BoardShim, BrainFlowInputParams
+            from brainflow.board_shim import (
+                BoardShim,
+                BrainFlowError,
+                BrainFlowInputParams,
+            )
         except ImportError as exc:
             raise BrainFlowUnavailableError(
                 'BrainFlow is optional. Install it with: pip install -e ".[bci]"'
@@ -90,7 +94,7 @@ class BrainFlowSource:
             if not eeg_channels:
                 raise RuntimeError(f"board {master_board_id} exposes no EEG channels")
             board.start_stream(self.config.ring_buffer_size)
-        except Exception:
+        except (BrainFlowError, RuntimeError):
             try:
                 board.release_session()
             finally:
@@ -123,7 +127,7 @@ class BrainFlowSource:
         if duration_seconds <= 0:
             raise ValueError("duration_seconds must be positive")
 
-        requested_samples = max(1, int(round(duration_seconds * self.sample_rate_hz)))
+        requested_samples = max(1, round(duration_seconds * self.sample_rate_hz))
         sleep(duration_seconds)
         board_data = np.asarray(self._board.get_board_data(requested_samples), dtype=float)
         if board_data.ndim != 2 or board_data.shape[1] == 0:
