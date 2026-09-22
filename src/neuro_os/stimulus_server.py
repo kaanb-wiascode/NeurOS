@@ -49,7 +49,7 @@ def _make_handler(
         def do_GET(self) -> None:
             if self.path == "/api/status":
                 self._send_json(
-                    http.HTTPStatus.OK,
+                    http.http.HTTPStatus.OK,
                     {
                         "connected": recorder.source.is_open,
                         "sample_rate_hz": recorder.source.sample_rate_hz,
@@ -121,7 +121,7 @@ def _make_handler(
                 raise TypeError("JSON body must be an object")
             return value
 
-        def _send_json(self, status: http.HTTPStatus, payload: dict[str, Any]) -> None:
+        def _send_json(self, status: http.HTTPStatus, payload: dict[str, typing.Any]) -> None:
             encoded = json.dumps(payload).encode("utf-8")
             self.send_response(status.value)
             self.send_header("Content-Type", "application/json; charset=utf-8")
