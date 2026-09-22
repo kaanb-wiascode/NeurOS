@@ -23,6 +23,16 @@ class BrainFlowSourceConfig:
     ring_buffer_size: int = 45_000
 
 
+@dataclass(frozen=True, slots=True)
+class BrainFlowBoardInfo:
+    board_id: int
+    device_name: str
+    sample_rate_hz: int
+    eeg_row_indices: tuple[int, ...]
+    channel_names: tuple[str, ...]
+    marker_channel_index: int
+
+
 class BrainFlowSource:
     """Non-invasive BrainFlow acquisition adapter.
 
@@ -35,8 +45,10 @@ class BrainFlowSource:
         self._board: Any | None = None
         self._sample_rate_hz: int | None = None
         self._eeg_channels: tuple[int, ...] = ()
+        self._channel_names: tuple[str, ...] = ()
         self._marker_channel: int | None = None
         self._master_board_id: int | None = None
+        self._device_name: str | None = None
         self._is_open = False
 
     @property
@@ -47,13 +59,30 @@ class BrainFlowSource:
 
     @property
     def channel_names(self) -> tuple[str, ...]:
-        if not self._eeg_channels:
+        if not self._channel_names:
             raise RuntimeError("source must be opened before channel_names are available")
-        return tuple(f"eeg_{index}" for index in self._eeg_channels)
+        return self._channel_names
 
     @property
     def is_open(self) -> bool:
         return self._is_open
+
+    @property
+    def board_info(self) -> BrainFlowBoardInfo:
+        if (
+            self._master_board_id is None
+            or self._device_name is None
+            or self._marker_channel is None
+        ):
+            raise RuntimeError("source must be opened before board_info is available")
+        return BrainFlowBoardInfo(
+            board_id=self._master_board_id,
+            device_name=self._device_name,
+            sample_rate_hz=self.sample_rate_hz,
+            eeg_row_indices=self._eeg_channels,
+            channel_names=self.channel_names,
+            marker_channel_index=self._marker_channel,
+        )
 
     def open(self) -> None:
         if self._is_open:
@@ -93,8 +122,22 @@ class BrainFlowSource:
                 int(index) for index in BoardShim.get_eeg_channels(master_board_id)
             )
             marker_channel = int(BoardShim.get_marker_channel(master_board_id))
+            device_name = str(BoardShim.get_device_name(master_board_id))
             if not eeg_channels:
                 raise RuntimeError(f"board {master_board_id} exposes no EEG channels")
+
+            try:
+                fixed_names = tuple(
+                    str(name) for name in BoardShim.get_eeg_names(master_board_id)
+                )
+            except BrainFlowError:
+                fixed_names = ()
+
+            channel_names = (
+                fixed_names
+                if len(fixed_names) == len(eeg_channels)
+                else tuple(f"eeg_{index}" for index in eeg_channels)
+            )
             board.start_stream(self.config.ring_buffer_size)
         except (BrainFlowError, RuntimeError):
             try:
@@ -106,7 +149,9 @@ class BrainFlowSource:
         self._master_board_id = master_board_id
         self._sample_rate_hz = sample_rate_hz
         self._eeg_channels = eeg_channels
+        self._channel_names = channel_names
         self._marker_channel = marker_channel
+        self._device_name = device_name
         self._is_open = True
 
     def close(self) -> None:
@@ -186,6 +231,8 @@ class BrainFlowSource:
         self._board = None
         self._sample_rate_hz = None
         self._eeg_channels = ()
+        self._channel_names = ()
         self._marker_channel = None
         self._master_board_id = None
+        self._device_name = None
         self._is_open = False
