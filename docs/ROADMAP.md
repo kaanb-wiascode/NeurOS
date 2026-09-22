@@ -44,10 +44,10 @@
 - [x] Local replay/analysis loader for consented marker-aligned recordings
 
 ## Phase 3 — AI Cortex
-- [ ] Structured intent -> tool router
+- [x] Structured intent -> safety-aware tool router
 - [ ] Voice fallback
-- [ ] Confirmation UX
-- [ ] Local audit log
+- [ ] Confirmation UX (backend non-neural confirmation protocol complete)
+- [x] Local append-only AI Cortex audit log
 - [ ] Permissioned personal knowledge retrieval
 
 ## Phase 4 — Additional paradigms
