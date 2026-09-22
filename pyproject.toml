@@ -1,0 +1,37 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "neuro-os"
+version = "0.1.0"
+description = "Safety-first non-invasive BCI to AI research prototype"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=2.0,<3",
+  "scipy>=1.13,<2",
+  "typer>=0.12,<1",
+]
+
+[project.optional-dependencies]
+ai = ["openai>=1.0"]
+bci = ["brainflow>=5.16,<6"]
+dev = ["pytest>=8.3,<9", "ruff>=0.8,<1"]
+
+[project.scripts]
+neuro-os = "neuro_os.cli:app"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint.isort]
+known-first-party = ["neuro_os"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/neuro_os"]

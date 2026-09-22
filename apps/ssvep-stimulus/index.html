@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NeurOS SSVEP Stimulus</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="header">
+      <div>
+        <p class="eyebrow">NeurOS / Phase 2</p>
+        <h1>SSVEP Calibration Stimulus</h1>
+        <p class="subtle">Four-target non-invasive visual stimulus prototype.</p>
+      </div>
+      <div class="status" id="status">IDLE</div>
+    </section>
+
+    <section class="warning" aria-live="polite">
+      <strong>Flashing-light warning.</strong>
+      This screen intentionally produces repetitive visual flicker. Do not start if you
+      have a history of photosensitive seizures, epilepsy, or flashing-light-triggered
+      symptoms. Stop immediately if you feel unwell.
+    </section>
+
+    <section class="controls">
+      <label>
+        Focus target
+        <select id="focus-target"></select>
+      </label>
+      <label>
+        Session length
+        <select id="duration">
+          <option value="10">10 seconds</option>
+          <option value="20" selected>20 seconds</option>
+          <option value="30">30 seconds</option>
+        </select>
+      </label>
+      <button id="start" class="primary">Start session</button>
+      <button id="stop" disabled>Stop</button>
+      <button id="export" disabled>Export session JSON</button>
+    </section>
+
+    <section class="instruction" id="instruction">
+      Choose a focus target, then start a short calibration trial.
+    </section>
+
+    <section class="grid" id="target-grid" aria-label="SSVEP targets"></section>
+
+    <section class="metrics">
+      <div><span>Elapsed</span><strong id="elapsed">0.0 s</strong></div>
+      <div><span>Display FPS</span><strong id="fps">—</strong></div>
+      <div><span>Frames</span><strong id="frames">0</strong></div>
+      <div><span>Acquisition</span><strong id="acquisition">Checking…</strong></div>
+      <div><span>Timing mode</span><strong>RAF / elapsed-time phase</strong></div>
+    </section>
+
+    <p class="footnote">
+      This prototype is for software research and calibration only. Browser/display timing
+      must be validated on the actual monitor before collecting research-quality EEG data.
+    </p>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
