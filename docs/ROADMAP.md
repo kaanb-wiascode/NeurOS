@@ -38,8 +38,8 @@
 - [x] Display-FPS measurement and timing limitation notice
 - [x] Flashing-light safety warning and explicit manual start
 - [ ] Validate physical stimulus timing on the actual monitor
-- [ ] Connect trial labels/timestamps to EEG acquisition markers
-- [ ] Calibration workflow orchestration
+- [x] Connect trial labels/timestamps to BrainFlow acquisition markers
+- [x] Local trial start/stop orchestration and marker-aligned session capture
 - [ ] Accuracy/confusion matrix/ITR metrics
 - [ ] Replay of consented local recordings
 
