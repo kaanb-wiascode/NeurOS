@@ -18,17 +18,21 @@
 - [x] BrainFlow synthetic-board smoke command
 - [x] Hardware-free BrainFlow smoke test in GitHub Actions
 - [x] Keep BrainFlow optional so core CI does not require hardware libraries
-- [x] Never commit raw EEG data
+- [x] Never commit raw EEG data or local calibration state
 - [x] Baseline signal-quality metrics: flatline + configurable 50/60 Hz mains noise
+- [x] Zero-phase band-pass preprocessing
+- [x] Configurable 50/60 Hz notch filtering
+- [x] Deterministic multi-channel selection and virtual channel averaging
+- [x] Local descriptive calibration-profile model
+- [x] Hardware-free calibration CLI example
 - [ ] Select supported non-invasive EEG hardware
-- [ ] Local calibration sessions
-- [ ] Band-pass / notch filtering pipeline
-- [ ] Multi-channel channel-selection strategy
+- [ ] Calibrate on a real user/device session
+- [ ] Device-specific channel naming/profile
 - [ ] Hardware-in-the-loop test on the selected device
 
 ## Phase 2 — SSVEP experiment UI
 - [ ] Four-target stimulus window
-- [ ] Calibration workflow
+- [ ] Calibration workflow UI
 - [ ] Accuracy/confusion matrix/ITR metrics
 - [ ] Replay of consented local recordings
 
