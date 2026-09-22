@@ -146,3 +146,22 @@ accuracy / confusion matrix / ITR estimate
 The reported ITR is a Wolpaw-style theoretical estimate. It should not be treated as
 measured communication throughput; the classic formula assumes stable discrete classes,
 uniform target probabilities, and approximately uniform error behavior.
+
+
+## Phase 3 — AI Cortex
+
+Route a previously recorded EEG trial through the structured Cortex:
+
+```bash
+neuro-os cortex-trial .neuros/sessions/<trial-id>.json
+```
+
+The current Cortex does not receive raw EEG. It receives the decoded intent and confidence,
+runs the safety policy, routes only registered tools, and writes a local audit event.
+
+Current low-risk tools map LEFT / RIGHT / SELECT / BACK to structured UI navigation actions.
+High-impact tools are supported by the router model but remain pending until an explicit
+non-neural confirmation arrives through keyboard, touch, or voice. EEG cannot confirm a
+high-impact action.
+
+See `docs/AI_CORTEX.md`.
