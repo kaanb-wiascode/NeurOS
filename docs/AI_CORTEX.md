@@ -86,3 +86,44 @@ marker-aligned EEG
 External AI providers and permissioned personal knowledge retrieval are deliberately
 separate future adapters. They must receive structured, permission-scoped requests rather
 than raw neural data.
+
+
+## OpenAI Responses provider
+
+OpenAI support is optional:
+
+```bash
+pip install -e ".[ai]"
+export OPENAI_API_KEY="..."
+```
+
+The provider uses the Responses API and defaults to `gpt-5.6-luna`. The model is
+configurable from the CLI.
+
+Run:
+
+```bash
+neuro-os ai-cortex .neuros/sessions/<trial-id>.json --prompt "Summarize my current task."
+```
+
+The API request is made only after:
+
+1. marker-aligned trial analysis succeeds;
+2. the decoder emits a supported intent;
+3. confidence passes `SafetyPolicy`;
+4. the Cortex routes an executable low-risk action.
+
+The provider sends only:
+
+- explicit user text;
+- decoded intent;
+- confidence;
+- routed action name;
+- small structured metadata such as trial ID and selected channel names.
+
+The provider rejects raw neural context keys such as `eeg`, `raw_eeg`, `markers`,
+`raw_signal`, and waveform payloads. NumPy arrays and nested bulk sequences are not
+accepted at this boundary.
+
+The Responses request explicitly sets `store=False`. API keys are read through the
+OpenAI SDK/environment and are never written into NeurOS source or session files.
