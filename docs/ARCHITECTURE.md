@@ -91,3 +91,41 @@ The acquisition-quality layer separately flags:
 - Brain stimulation.
 - Surgical or implant instructions.
 - Autonomous high-impact actions from EEG alone.
+
+
+## Phase 2 marker-aligned trials
+
+```text
+SSVEP browser
+    |
+    | POST /api/trial/start { intent }
+    v
+Local stimulus server
+    |
+    | BrainFlow insert_marker(101..104)
+    v
+EEG stream + marker channel
+    |
+    | visual trial
+    v
+SSVEP browser
+    |
+    | POST /api/trial/stop
+    v
+Local stimulus server
+    |
+    | BrainFlow insert_marker(201..204)
+    | drain EEG + marker channel together
+    v
+TrialRecorder
+    |
+    +--> .neuros/sessions/<trial>.npz
+    |      EEG + sample-aligned marker array
+    |
+    `--> .neuros/sessions/<trial>.json
+           intent, timing, marker indices, browser FPS
+```
+
+The browser API never returns raw EEG. Session files are local-only and excluded from Git.
+Start/stop markers are intentionally distinct so later epoch extraction can verify both
+trial boundaries rather than inferring duration from browser timing alone.
