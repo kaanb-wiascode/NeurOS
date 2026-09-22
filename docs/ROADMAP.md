@@ -8,13 +8,21 @@
 - [x] Safety gate
 - [x] Unit tests
 - [x] CI green on GitHub
+- [x] Reject under-resolved FFT windows
+- [x] Reject target-absent signals with a spectral quality gate
 
 ## Phase 1 — Real EEG ingestion
-- [ ] BrainFlow adapter behind a source interface
+- [x] Hardware-neutral `EEGSource` / `EEGFrame` contract
+- [x] Synthetic source implementation behind the same contract
+- [x] BrainFlow adapter behind the source interface
+- [x] BrainFlow synthetic-board smoke command
+- [x] Keep BrainFlow optional so core CI does not require hardware libraries
+- [x] Never commit raw EEG data
 - [ ] Select supported non-invasive EEG hardware
 - [ ] Local calibration sessions
 - [ ] Filtering and artifact-quality metrics
-- [ ] Never commit raw EEG data
+- [ ] Multi-channel channel-selection strategy
+- [ ] Hardware-in-the-loop test on the selected device
 
 ## Phase 2 — SSVEP experiment UI
 - [ ] Four-target stimulus window
