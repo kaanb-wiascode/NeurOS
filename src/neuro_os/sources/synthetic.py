@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from neuro_os.domain import Intent
+from ..domain import Intent
 
 
 TARGET_FREQUENCIES: dict[Intent, float] = {
