@@ -8,7 +8,6 @@ from neuro_os.domain import Intent
 from neuro_os.sources.brainflow import BrainFlowSource
 from neuro_os.trials import TrialRecorder
 
-
 _MAX_JSON_BODY_BYTES = 16_384
 
 
