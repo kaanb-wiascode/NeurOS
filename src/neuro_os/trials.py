@@ -100,7 +100,7 @@ class TrialRecorder:
         self,
         *,
         completion: str = "completed",
-        client_metadata: dict[str, Any] | None = None,
+        client_metadata: dict[str, typing.Any] | None = None,
     ) -> TrialArtifact:
         with self._lock:
             active = self._active
