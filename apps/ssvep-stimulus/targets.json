@@ -1,0 +1,8 @@
+{
+  "targets": [
+    {"intent": "LEFT", "frequency_hz": 8.0, "label": "LEFT"},
+    {"intent": "RIGHT", "frequency_hz": 10.0, "label": "RIGHT"},
+    {"intent": "SELECT", "frequency_hz": 12.0, "label": "SELECT"},
+    {"intent": "BACK", "frequency_hz": 15.0, "label": "BACK"}
+  ]
+}
