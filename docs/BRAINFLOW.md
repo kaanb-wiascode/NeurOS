@@ -45,3 +45,25 @@ NeurOS uses BrainFlow's marker channel to align labeled browser trials with acqu
 5. fails unless marker `999` is found on the sample-aligned marker array.
 
 The Phase 2 trial bridge uses separate start/stop marker ranges (101–104 / 201–204).
+
+
+## Board inspection
+
+Use:
+
+```bash
+neuro-os inspect-board --board-id -1
+```
+
+The command opens the board and reports only metadata:
+
+- effective BrainFlow board ID;
+- device name;
+- sampling rate;
+- EEG row indices;
+- EEG channel names;
+- marker-channel row index.
+
+When BrainFlow exposes fixed 10–20 electrode names, NeurOS preserves those names in
+`EEGFrame.channel_names`. Boards without fixed electrode locations fall back to stable
+`eeg_<row>` names so a later user/device profile can assign electrode aliases explicitly.
