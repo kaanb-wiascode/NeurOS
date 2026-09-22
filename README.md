@@ -101,3 +101,48 @@ warning. Actual monitor timing must be validated before research-quality EEG col
 
 See `docs/ARCHITECTURE.md`, `docs/BRAINFLOW.md`, `docs/SAFETY.md`,
 `docs/ROADMAP.md`, and `apps/ssvep-stimulus/README.md`.
+
+
+## Analyze recorded trials
+
+Analyze one saved trial:
+
+```bash
+neuro-os analyze-trial .neuros/sessions/<trial-id>.json
+```
+
+Analyze all trials in a session directory:
+
+```bash
+neuro-os analyze-session .neuros/sessions
+```
+
+Optional channel selection can be supplied as a comma-separated list:
+
+```bash
+neuro-os analyze-session .neuros/sessions --channels Oz,O1,O2
+```
+
+The analysis pipeline:
+
+```text
+start/stop marker indices
+        ↓
+marker-delimited EEG epoch
+        ↓
+signal-quality gate
+        ↓
+band-pass + notch filtering
+        ↓
+selected-channel average
+        ↓
+sample-rate-aware SSVEP decoder
+        ↓
+prediction + confidence
+        ↓
+accuracy / confusion matrix / ITR estimate
+```
+
+The reported ITR is a Wolpaw-style theoretical estimate. It should not be treated as
+measured communication throughput; the classic formula assumes stable discrete classes,
+uniform target probabilities, and approximately uniform error behavior.
