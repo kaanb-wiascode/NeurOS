@@ -31,8 +31,15 @@
 - [ ] Hardware-in-the-loop test on the selected device
 
 ## Phase 2 — SSVEP experiment UI
-- [ ] Four-target stimulus window
-- [ ] Calibration workflow UI
+- [x] Four-target browser stimulus prototype
+- [x] Shared browser/decoder target configuration test
+- [x] Explicit labeled focus target for calibration trials
+- [x] Local session-metadata export
+- [x] Display-FPS measurement and timing limitation notice
+- [x] Flashing-light safety warning and explicit manual start
+- [ ] Validate physical stimulus timing on the actual monitor
+- [ ] Connect trial labels/timestamps to EEG acquisition markers
+- [ ] Calibration workflow orchestration
 - [ ] Accuracy/confusion matrix/ITR metrics
 - [ ] Replay of consented local recordings
 
