@@ -11,7 +11,6 @@ import numpy as np
 from neuro_os.domain import Intent
 from neuro_os.sources.base import MarkerEEGSource
 
-
 _INTENT_INDEX = {
     Intent.LEFT: 1,
     Intent.RIGHT: 2,
