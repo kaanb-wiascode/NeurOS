@@ -1,8 +1,8 @@
+import http
+import http.server
 import json
-from http import HTTPStatus
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
-from typing import Any
+import pathlib
+import typing
 
 from neuro_os.domain import Intent
 from neuro_os.sources.brainflow import BrainFlowSource
@@ -17,10 +17,10 @@ def serve_stimulus(
     *,
     host: str = "127.0.0.1",
     port: int = 8080,
-    static_dir: str | Path = "apps/ssvep-stimulus",
-    storage_dir: str | Path = ".neuros/sessions",
+    static_dir: str | pathlib.Path = "apps/ssvep-stimulus",
+    storage_dir: str | pathlib.Path = ".neuros/sessions",
 ) -> None:
-    root = Path(static_dir).resolve()
+    root = pathlib.Path(static_dir).resolve()
     if not root.is_dir():
         raise ValueError(f"stimulus static directory does not exist: {root}")
 
@@ -29,7 +29,7 @@ def serve_stimulus(
 
     source.open()
     try:
-        server = ThreadingHTTPServer((host, port), handler)
+        server = http.server.ThreadingHTTPServer((host, port), handler)
         try:
             server.serve_forever()
         finally:
@@ -40,16 +40,16 @@ def serve_stimulus(
 
 def _make_handler(
     recorder: TrialRecorder,
-    static_dir: Path,
-) -> type[SimpleHTTPRequestHandler]:
-    class StimulusRequestHandler(SimpleHTTPRequestHandler):
-        def __init__(self, *args: Any, **kwargs: Any) -> None:
+    static_dir: pathlib.Path,
+) -> type[http.server.SimpleHTTPRequestHandler]:
+    class StimulusRequestHandler(http.server.SimpleHTTPRequestHandler):
+        def __init__(self, *args: typing.Any, **kwargs: typing.Any) -> None:
             super().__init__(*args, directory=str(static_dir), **kwargs)
 
         def do_GET(self) -> None:
             if self.path == "/api/status":
                 self._send_json(
-                    HTTPStatus.OK,
+                    http.HTTPStatus.OK,
                     {
                         "connected": recorder.source.is_open,
                         "sample_rate_hz": recorder.source.sample_rate_hz,
@@ -71,7 +71,7 @@ def _make_handler(
                     intent = Intent(str(payload["intent"]))
                     active = recorder.start(intent)
                     self._send_json(
-                        HTTPStatus.CREATED,
+                        http.HTTPStatus.CREATED,
                         {
                             "trial_id": active.trial_id,
                             "intent": active.intent.value,
@@ -101,13 +101,13 @@ def _make_handler(
                     )
                     return
 
-                self._send_json(HTTPStatus.NOT_FOUND, {"error": "unknown API route"})
-            except (KeyError, ValueError) as exc:
-                self._send_json(HTTPStatus.BAD_REQUEST, {"error": str(exc)})
+                self._send_json(http.HTTPStatus.NOT_FOUND, {"error": "unknown API route"})
+            except (KeyError, TypeError, ValueError) as exc:
+                self._send_json(http.HTTPStatus.BAD_REQUEST, {"error": str(exc)})
             except RuntimeError as exc:
-                self._send_json(HTTPStatus.CONFLICT, {"error": str(exc)})
+                self._send_json(http.HTTPStatus.CONFLICT, {"error": str(exc)})
 
-        def _read_json_body(self) -> dict[str, Any]:
+        def _read_json_body(self) -> dict[str, typing.Any]:
             raw_length = self.headers.get("Content-Length")
             if raw_length is None:
                 raise ValueError("Content-Length is required")
@@ -118,10 +118,10 @@ def _make_handler(
             raw = self.rfile.read(length)
             value = json.loads(raw.decode("utf-8"))
             if not isinstance(value, dict):
-                raise ValueError("JSON body must be an object")
+                raise TypeError("JSON body must be an object")
             return value
 
-        def _send_json(self, status: HTTPStatus, payload: dict[str, Any]) -> None:
+        def _send_json(self, status: http.HTTPStatus, payload: dict[str, Any]) -> None:
             encoded = json.dumps(payload).encode("utf-8")
             self.send_response(status.value)
             self.send_header("Content-Type", "application/json; charset=utf-8")
