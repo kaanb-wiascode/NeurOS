@@ -129,3 +129,41 @@ TrialRecorder
 The browser API never returns raw EEG. Session files are local-only and excluded from Git.
 Start/stop markers are intentionally distinct so later epoch extraction can verify both
 trial boundaries rather than inferring duration from browser timing alone.
+
+
+## Trial analysis
+
+```text
+<id>.json + <id>.npz
+        |
+        v
+verify start/stop markers
+        |
+        v
+extract EEG samples strictly between markers
+        |
+        v
+signal quality
+        |
+        +--> rejected -> UNKNOWN
+        |
+        v
+band-pass + mains notch
+        |
+        v
+channel selection / average
+        |
+        v
+SSVEPDecoder(sample_rate_hz = recording rate)
+        |
+        v
+TrialAnalysis
+(expected, predicted, confidence, correct)
+        |
+        v
+SessionMetrics
+accuracy + classified accuracy + confusion matrix + ITR estimate
+```
+
+The decoder uses the stored recording sample rate instead of assuming 250 Hz. This is
+required before supporting multiple physical EEG boards with different acquisition rates.
