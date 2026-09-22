@@ -4,7 +4,7 @@ from typing import Any
 
 import numpy as np
 
-from neuro_os.sources.base import EEGFrame
+from neuro_os.sources.base import EEGFrame, MarkedEEGFrame
 
 
 class BrainFlowUnavailableError(RuntimeError):
@@ -26,8 +26,8 @@ class BrainFlowSourceConfig:
 class BrainFlowSource:
     """Non-invasive BrainFlow acquisition adapter.
 
-    The default board_id (-1) is BrainFlow's synthetic board, so the acquisition
-    path can be verified before physical EEG hardware is connected.
+    The default board_id (-1) is BrainFlow's synthetic board, so acquisition,
+    markers, and storage can be verified before physical EEG hardware is connected.
     """
 
     def __init__(self, config: BrainFlowSourceConfig | None = None) -> None:
@@ -35,6 +35,7 @@ class BrainFlowSource:
         self._board: Any | None = None
         self._sample_rate_hz: int | None = None
         self._eeg_channels: tuple[int, ...] = ()
+        self._marker_channel: int | None = None
         self._master_board_id: int | None = None
         self._is_open = False
 
@@ -91,6 +92,7 @@ class BrainFlowSource:
             eeg_channels = tuple(
                 int(index) for index in BoardShim.get_eeg_channels(master_board_id)
             )
+            marker_channel = int(BoardShim.get_marker_channel(master_board_id))
             if not eeg_channels:
                 raise RuntimeError(f"board {master_board_id} exposes no EEG channels")
             board.start_stream(self.config.ring_buffer_size)
@@ -104,6 +106,7 @@ class BrainFlowSource:
         self._master_board_id = master_board_id
         self._sample_rate_hz = sample_rate_hz
         self._eeg_channels = eeg_channels
+        self._marker_channel = marker_channel
         self._is_open = True
 
     def close(self) -> None:
@@ -142,9 +145,47 @@ class BrainFlowSource:
             timestamp=time(),
         )
 
+    def insert_marker(self, value: float) -> None:
+        if not self._is_open or self._board is None:
+            raise RuntimeError("source must be opened before insert_marker()")
+        if not np.isfinite(value) or value == 0:
+            raise ValueError("marker value must be finite and non-zero")
+        self._board.insert_marker(float(value))
+
+    def clear_buffer(self) -> None:
+        if not self._is_open or self._board is None:
+            raise RuntimeError("source must be opened before clear_buffer()")
+        self._board.get_board_data()
+
+    def drain_marked(self, *, settle_seconds: float = 0.0) -> MarkedEEGFrame:
+        if not self._is_open or self._board is None:
+            raise RuntimeError("source must be opened before drain_marked()")
+        if self._marker_channel is None:
+            raise RuntimeError("marker channel is unavailable")
+        if settle_seconds < 0:
+            raise ValueError("settle_seconds must not be negative")
+        if settle_seconds:
+            sleep(settle_seconds)
+
+        board_data = np.asarray(self._board.get_board_data(), dtype=float)
+        if board_data.ndim != 2 or board_data.shape[1] == 0:
+            raise RuntimeError("BrainFlow returned no samples")
+
+        eeg = board_data[np.asarray(self._eeg_channels), :]
+        markers = np.asarray(board_data[self._marker_channel, :], dtype=float)
+        return MarkedEEGFrame(
+            data=eeg,
+            markers=markers,
+            sample_rate_hz=self.sample_rate_hz,
+            channel_names=self.channel_names,
+            source=f"brainflow:{self._master_board_id}",
+            timestamp=time(),
+        )
+
     def _reset_state(self) -> None:
         self._board = None
         self._sample_rate_hz = None
         self._eeg_channels = ()
+        self._marker_channel = None
         self._master_board_id = None
         self._is_open = False
