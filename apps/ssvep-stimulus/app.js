@@ -9,6 +9,7 @@ const instructionNode = document.querySelector("#instruction");
 const elapsedNode = document.querySelector("#elapsed");
 const fpsNode = document.querySelector("#fps");
 const framesNode = document.querySelector("#frames");
+const acquisitionNode = document.querySelector("#acquisition");
 
 const response = await fetch("./targets.json", { cache: "no-store" });
 if (!response.ok) throw new Error("Unable to load SSVEP target configuration.");
@@ -22,6 +23,7 @@ let frameCount = 0;
 let lastFpsAt = 0;
 let lastFpsFrameCount = 0;
 let session = null;
+let bridgeConnected = false;
 
 for (const target of targets) {
   const option = document.createElement("option");
@@ -36,6 +38,34 @@ for (const target of targets) {
     target.label + "</strong><span>" + target.frequency_hz + " Hz</span></div>";
   grid.append(card);
   targetElements.push({ config: target, card, flash: card.querySelector(".flash") });
+}
+
+async function apiJson(path, payload = null) {
+  const options = { cache: "no-store" };
+  if (payload !== null) {
+    options.method = "POST";
+    options.headers = { "Content-Type": "application/json" };
+    options.body = JSON.stringify(payload);
+  }
+  const apiResponse = await fetch(path, options);
+  const body = await apiResponse.json();
+  if (!apiResponse.ok) {
+    throw new Error(body.error || "Acquisition bridge request failed.");
+  }
+  return body;
+}
+
+async function refreshBridgeStatus() {
+  try {
+    const status = await apiJson("/api/status");
+    bridgeConnected = Boolean(status.connected);
+    acquisitionNode.textContent = bridgeConnected
+      ? "BrainFlow " + status.sample_rate_hz + " Hz"
+      : "Disconnected";
+  } catch {
+    bridgeConnected = false;
+    acquisitionNode.textContent = "Local-only";
+  }
 }
 
 function updateFocusTarget() {
@@ -71,16 +101,32 @@ function render(now) {
   }
 
   if (elapsedSeconds >= session.duration_seconds) {
-    stopSession("completed", now);
+    void stopSession("completed", now);
     return;
   }
   animationId = requestAnimationFrame(render);
 }
 
-function startSession() {
+async function startSession() {
   if (running) return;
+
   const focus = targets.find((target) => target.intent === focusSelect.value);
   const durationSeconds = Number(durationSelect.value);
+  let bridgeStart = null;
+
+  startButton.disabled = true;
+  statusNode.textContent = bridgeConnected ? "MARKING" : "STARTING";
+
+  if (bridgeConnected) {
+    try {
+      bridgeStart = await apiJson("/api/trial/start", { intent: focus.intent });
+    } catch (error) {
+      statusNode.textContent = "BRIDGE ERROR";
+      acquisitionNode.textContent = error.message;
+      startButton.disabled = false;
+      return;
+    }
+  }
 
   running = true;
   frameCount = 0;
@@ -88,7 +134,7 @@ function startSession() {
   lastFpsAt = startedAt;
   lastFpsFrameCount = 0;
   session = {
-    schema_version: 1,
+    schema_version: 2,
     started_at_iso: new Date().toISOString(),
     focus_intent: focus.intent,
     focus_frequency_hz: focus.frequency_hz,
@@ -96,12 +142,15 @@ function startSession() {
     target_frequencies_hz: Object.fromEntries(
       targets.map((target) => [target.intent, target.frequency_hz]),
     ),
+    acquisition_mode: bridgeConnected ? "brainflow-marker-bridge" : "local-only",
+    server_trial_id: bridgeStart ? bridgeStart.trial_id : null,
+    start_marker: bridgeStart ? bridgeStart.start_marker : null,
     completion: null,
     measured_display_fps: null,
     frames_rendered: null,
+    server_artifact: null,
   };
 
-  startButton.disabled = true;
   stopButton.disabled = false;
   exportButton.disabled = true;
   focusSelect.disabled = true;
@@ -111,7 +160,7 @@ function startSession() {
   animationId = requestAnimationFrame(render);
 }
 
-function stopSession(completion = "stopped", stoppedAt = performance.now()) {
+async function stopSession(completion = "stopped", stoppedAt = performance.now()) {
   if (!running) return;
   running = false;
   if (animationId !== null) cancelAnimationFrame(animationId);
@@ -125,8 +174,29 @@ function stopSession(completion = "stopped", stoppedAt = performance.now()) {
 
   for (const target of targetElements) target.flash.style.opacity = "0.08";
 
-  startButton.disabled = false;
   stopButton.disabled = true;
+  statusNode.textContent = bridgeConnected ? "SAVING" : "COMPLETE";
+
+  if (bridgeConnected && session.server_trial_id) {
+    try {
+      session.server_artifact = await apiJson("/api/trial/stop", {
+        completion,
+        client_metadata: {
+          server_trial_id: session.server_trial_id,
+          elapsed_seconds: session.elapsed_seconds,
+          frames_rendered: session.frames_rendered,
+          measured_display_fps: session.measured_display_fps,
+          focus_frequency_hz: session.focus_frequency_hz,
+        },
+      });
+      acquisitionNode.textContent = "Saved / marker-aligned";
+    } catch (error) {
+      session.bridge_error = error.message;
+      acquisitionNode.textContent = "Save error";
+    }
+  }
+
+  startButton.disabled = false;
   exportButton.disabled = false;
   focusSelect.disabled = false;
   durationSelect.disabled = false;
@@ -149,11 +219,12 @@ function exportSession() {
 }
 
 focusSelect.addEventListener("change", updateFocusTarget);
-startButton.addEventListener("click", startSession);
-stopButton.addEventListener("click", () => stopSession("stopped"));
+startButton.addEventListener("click", () => void startSession());
+stopButton.addEventListener("click", () => void stopSession("stopped"));
 exportButton.addEventListener("click", exportSession);
 window.addEventListener("beforeunload", () => {
   if (animationId !== null) cancelAnimationFrame(animationId);
 });
 
 updateFocusTarget();
+await refreshBridgeStatus();
