@@ -1,3 +1,4 @@
+import dataclasses
 import json
 from pathlib import Path
 from typing import Annotated
@@ -5,6 +6,12 @@ from typing import Annotated
 import numpy as np
 import typer
 
+from neuro_os.analysis import (
+    analyze_session,
+    analyze_trial,
+    write_session_metrics,
+    write_trial_analysis,
+)
 from neuro_os.calibration import collect_calibration_profile
 from neuro_os.decoders.ssvep import SSVEPDecoder
 from neuro_os.domain import Intent
@@ -174,6 +181,66 @@ def serve_stimulus_command(
         )
     except BrainFlowUnavailableError as exc:
         raise typer.BadParameter(str(exc)) from exc
+
+
+@app.command("analyze-trial")
+def analyze_trial_command(
+    metadata: Annotated[Path, typer.Argument(exists=True, dir_okay=False)],
+    channels: Annotated[str | None, typer.Option()] = None,
+    mains_hz: Annotated[float, typer.Option(min=45.0, max=65.0)] = 50.0,
+) -> None:
+    """Decode one saved marker-aligned SSVEP trial."""
+    selected_channels = _parse_channels(channels)
+    result = analyze_trial(
+        metadata,
+        channel_names=selected_channels,
+        mains_hz=mains_hz,
+    )
+    output = metadata.with_name(metadata.stem + ".analysis.json")
+    write_trial_analysis(result, output)
+    payload = dataclasses.asdict(result)
+    payload["analysis_file"] = str(output)
+    typer.echo(json.dumps(payload, indent=2))
+
+
+@app.command("analyze-session")
+def analyze_session_command(
+    storage_dir: Annotated[
+        Path,
+        typer.Argument(exists=True, file_okay=False),
+    ] = Path(".neuros/sessions"),
+    channels: Annotated[str | None, typer.Option()] = None,
+    mains_hz: Annotated[float, typer.Option(min=45.0, max=65.0)] = 50.0,
+) -> None:
+    """Analyze all saved trials and write a session summary."""
+    selected_channels = _parse_channels(channels)
+    analyses, metrics = analyze_session(
+        storage_dir,
+        channel_names=selected_channels,
+        mains_hz=mains_hz,
+    )
+    for analysis in analyses:
+        write_trial_analysis(
+            analysis,
+            storage_dir / f"{analysis.trial_id}.analysis.json",
+        )
+
+    summary_path = storage_dir / "summary.json"
+    write_session_metrics(metrics, summary_path)
+    payload = dataclasses.asdict(metrics)
+    payload["summary_file"] = str(summary_path)
+    typer.echo(json.dumps(payload, indent=2))
+
+
+def _parse_channels(value: str | None) -> tuple[str, ...] | None:
+    if value is None:
+        return None
+    channels = tuple(item.strip() for item in value.split(",") if item.strip())
+    if not channels:
+        raise typer.BadParameter("channels must contain at least one channel name")
+    if len(set(channels)) != len(channels):
+        raise typer.BadParameter("channels must not contain duplicates")
+    return channels
 
 
 if __name__ == "__main__":
