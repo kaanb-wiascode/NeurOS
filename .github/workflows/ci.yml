@@ -30,4 +30,4 @@ jobs:
           python-version: "3.11"
       - run: python -m pip install --upgrade pip
       - run: pip install -e ".[bci]"
-      - run: neuro-os brainflow-smoke --board-id -1 --duration-seconds 1
+      - run: neuro-os brainflow-smoke --board-id -1
