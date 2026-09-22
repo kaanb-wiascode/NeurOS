@@ -40,8 +40,8 @@
 - [ ] Validate physical stimulus timing on the actual monitor
 - [x] Connect trial labels/timestamps to BrainFlow acquisition markers
 - [x] Local trial start/stop orchestration and marker-aligned session capture
-- [ ] Accuracy/confusion matrix/ITR metrics
-- [ ] Replay of consented local recordings
+- [x] Marker-delimited decoding + accuracy/confusion matrix/ITR metrics
+- [x] Local replay/analysis loader for consented marker-aligned recordings
 
 ## Phase 3 — AI Cortex
 - [ ] Structured intent -> tool router
