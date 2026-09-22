@@ -40,7 +40,7 @@ class MarkedEEGFrame(EEGFrame):
     markers: np.ndarray
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        EEGFrame.__post_init__(self)
         if self.markers.ndim != 1:
             raise ValueError("markers must be a 1-D sample-aligned array")
         if self.markers.size != self.sample_count:
