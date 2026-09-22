@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import Annotated
 
+import numpy as np
 import typer
 
 from neuro_os.calibration import collect_calibration_profile
@@ -16,6 +17,7 @@ from neuro_os.sources.brainflow import (
     BrainFlowUnavailableError,
 )
 from neuro_os.sources.synthetic import SyntheticSSVEPSource
+from neuro_os.stimulus_server import serve_stimulus
 
 app = typer.Typer(help="NeurOS non-invasive BCI research tools.")
 
@@ -99,21 +101,29 @@ def calibrate_synthetic(
 
 @app.command("brainflow-smoke")
 def brainflow_smoke(
-    duration_seconds: Annotated[float, typer.Option(min=0.1, max=10.0)] = 1.0,
     board_id: Annotated[int, typer.Option()] = -1,
     serial_port: Annotated[str | None, typer.Option()] = None,
 ) -> None:
-    """Verify BrainFlow acquisition; board -1 uses BrainFlow's synthetic board."""
+    """Verify BrainFlow acquisition and marker-channel alignment."""
     source = BrainFlowSource(
         BrainFlowSourceConfig(board_id=board_id, serial_port=serial_port)
     )
+    marker_value = 999.0
     try:
         source.open()
-        frame = source.read(duration_seconds)
+        source.clear_buffer()
+        source.insert_marker(marker_value)
+        frame = source.drain_marked(settle_seconds=0.10)
     except BrainFlowUnavailableError as exc:
         raise typer.BadParameter(str(exc)) from exc
     finally:
         source.close()
+
+    marker_indices = tuple(
+        int(index) for index in np.flatnonzero(np.isclose(frame.markers, marker_value))
+    )
+    if not marker_indices:
+        raise RuntimeError("BrainFlow marker smoke test did not observe the inserted marker")
 
     typer.echo(
         json.dumps(
@@ -122,11 +132,48 @@ def brainflow_smoke(
                 "sample_rate_hz": frame.sample_rate_hz,
                 "channels": frame.channel_names,
                 "sample_count": frame.sample_count,
-                "duration_seconds": round(frame.duration_seconds, 4),
+                "marker_value": marker_value,
+                "marker_indices": marker_indices,
             },
             indent=2,
         )
     )
+
+
+@app.command("serve-stimulus")
+def serve_stimulus_command(
+    board_id: Annotated[int, typer.Option()] = -1,
+    serial_port: Annotated[str | None, typer.Option()] = None,
+    host: Annotated[str, typer.Option()] = "127.0.0.1",
+    port: Annotated[int, typer.Option(min=1, max=65535)] = 8080,
+    static_dir: Annotated[Path, typer.Option()] = Path("apps/ssvep-stimulus"),
+    storage_dir: Annotated[Path, typer.Option()] = Path(".neuros/sessions"),
+) -> None:
+    """Serve the SSVEP UI and bridge its trials to BrainFlow markers."""
+    source = BrainFlowSource(
+        BrainFlowSourceConfig(board_id=board_id, serial_port=serial_port)
+    )
+    typer.echo(
+        json.dumps(
+            {
+                "url": f"http://{host}:{port}",
+                "board_id": board_id,
+                "static_dir": str(static_dir),
+                "storage_dir": str(storage_dir),
+            },
+            indent=2,
+        )
+    )
+    try:
+        serve_stimulus(
+            source,
+            host=host,
+            port=port,
+            static_dir=static_dir,
+            storage_dir=storage_dir,
+        )
+    except BrainFlowUnavailableError as exc:
+        raise typer.BadParameter(str(exc)) from exc
 
 
 if __name__ == "__main__":
