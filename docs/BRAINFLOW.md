@@ -1,0 +1,32 @@
+# BrainFlow Acquisition
+
+NeurOS uses BrainFlow only as an acquisition boundary. Decoder and safety logic remain
+independent from a specific EEG vendor.
+
+## Hardware-free smoke test
+
+BrainFlow's synthetic board uses board ID `-1` and exercises the same session lifecycle
+used by physical boards.
+
+```bash
+pip install -e ".[bci,dev]"
+neuro-os brainflow-smoke --board-id -1 --duration-seconds 1
+```
+
+The adapter follows this lifecycle:
+
+1. create `BoardShim`;
+2. `prepare_session()`;
+3. resolve the effective board ID and EEG metadata;
+4. `start_stream()`;
+5. read a bounded window with `get_board_data()`;
+6. `stop_stream()`;
+7. `release_session()`.
+
+## Physical hardware
+
+No physical device is hard-coded yet. Once a supported non-invasive board is selected,
+device-specific connection values (for example a serial port) will be supplied through
+`BrainFlowSourceConfig` or the CLI rather than committed to source control.
+
+Raw EEG recordings must remain local by default and must not be committed to Git.
