@@ -165,3 +165,24 @@ non-neural confirmation arrives through keyboard, touch, or voice. EEG cannot co
 high-impact action.
 
 See `docs/AI_CORTEX.md`.
+
+
+### Optional OpenAI text provider
+
+Install the optional provider:
+
+```bash
+pip install -e ".[ai]"
+export OPENAI_API_KEY="..."
+```
+
+Then a saved EEG trial can gate an explicit text prompt:
+
+```bash
+neuro-os ai-cortex .neuros/sessions/<trial-id>.json \
+  --prompt "Explain the selected item."
+```
+
+If the EEG trial is rejected, unknown, or below the confidence threshold, the command
+exits without making an AI API call. Raw EEG and marker arrays are not included in the
+provider request.
