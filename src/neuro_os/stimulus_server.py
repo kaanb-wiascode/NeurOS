@@ -49,7 +49,7 @@ def _make_handler(
         def do_GET(self) -> None:
             if self.path == "/api/status":
                 self._send_json(
-                    http.http.HTTPStatus.OK,
+                    http.HTTPStatus.OK,
                     {
                         "connected": recorder.source.is_open,
                         "sample_rate_hz": recorder.source.sample_rate_hz,
@@ -87,7 +87,7 @@ def _make_handler(
                         client_metadata=dict(payload.get("client_metadata") or {}),
                     )
                     self._send_json(
-                        HTTPStatus.OK,
+                        http.HTTPStatus.OK,
                         {
                             "trial_id": artifact.trial_id,
                             "intent": artifact.intent,
