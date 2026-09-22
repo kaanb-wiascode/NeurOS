@@ -1,10 +1,10 @@
+import dataclasses
 import json
-from dataclasses import asdict, dataclass
-from pathlib import Path
-from threading import Lock
-from time import time
-from typing import Any
-from uuid import uuid4
+import pathlib
+import threading
+import time
+import typing
+import uuid
 
 import numpy as np
 
@@ -32,7 +32,7 @@ def stop_marker_code(intent: Intent) -> float:
     return float(200 + _INTENT_INDEX[intent])
 
 
-@dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class ActiveTrial:
     trial_id: str
     intent: Intent
@@ -40,7 +40,7 @@ class ActiveTrial:
     start_marker: float
 
 
-@dataclass(frozen=True, slots=True)
+@dataclasses.dataclass(frozen=True, slots=True)
 class TrialArtifact:
     trial_id: str
     intent: str
@@ -57,7 +57,7 @@ class TrialArtifact:
     stop_marker_indices: tuple[int, ...]
     eeg_file: str
     metadata_file: str
-    client_metadata: dict[str, Any]
+    client_metadata: dict[str, typing.Any]
 
 
 class TrialRecorder:
@@ -66,12 +66,12 @@ class TrialRecorder:
     def __init__(
         self,
         source: MarkerEEGSource,
-        storage_dir: str | Path = ".neuros/sessions",
+        storage_dir: str | pathlib.Path = ".neuros/sessions",
     ) -> None:
         self.source = source
-        self.storage_dir = Path(storage_dir)
+        self.storage_dir = pathlib.Path(storage_dir)
         self._active: ActiveTrial | None = None
-        self._lock = Lock()
+        self._lock = threading.Lock()
 
     @property
     def active_trial(self) -> ActiveTrial | None:
@@ -88,9 +88,9 @@ class TrialRecorder:
             self.source.clear_buffer()
             self.source.insert_marker(marker)
             active = ActiveTrial(
-                trial_id=uuid4().hex,
+                trial_id=uuid.uuid4().hex,
                 intent=intent,
-                started_at=time(),
+                started_at=time.time(),
                 start_marker=marker,
             )
             self._active = active
@@ -113,7 +113,7 @@ class TrialRecorder:
             self.source.insert_marker(stop_marker)
             settle_seconds = max(0.02, 2 / self.source.sample_rate_hz)
             frame = self.source.drain_marked(settle_seconds=settle_seconds)
-            ended_at = time()
+            ended_at = time.time()
 
             start_indices = tuple(
                 int(index)
@@ -158,7 +158,7 @@ class TrialRecorder:
                 client_metadata=dict(client_metadata or {}),
             )
             metadata_path.write_text(
-                json.dumps(asdict(artifact), indent=2) + "\n",
+                json.dumps(dataclasses.asdict(artifact), indent=2) + "\n",
                 encoding="utf-8",
             )
             self._active = None
