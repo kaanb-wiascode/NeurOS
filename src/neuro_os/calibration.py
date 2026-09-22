@@ -1,5 +1,5 @@
-from dataclasses import asdict, dataclass
 import json
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from statistics import median
 from typing import Any
