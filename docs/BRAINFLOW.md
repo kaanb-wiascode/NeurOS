@@ -30,3 +30,18 @@ device-specific connection values (for example a serial port) will be supplied t
 `BrainFlowSourceConfig` or the CLI rather than committed to source control.
 
 Raw EEG recordings must remain local by default and must not be committed to Git.
+
+
+## Marker alignment
+
+NeurOS uses BrainFlow's marker channel to align labeled browser trials with acquired EEG.
+
+`neuro-os brainflow-smoke --board-id -1` now:
+
+1. starts the BrainFlow synthetic board;
+2. clears stale buffered samples;
+3. inserts marker `999`;
+4. drains EEG and marker data together;
+5. fails unless marker `999` is found on the sample-aligned marker array.
+
+The Phase 2 trial bridge uses separate start/stop marker ranges (101–104 / 201–204).
