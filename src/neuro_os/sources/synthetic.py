@@ -4,7 +4,6 @@ import numpy as np
 
 from ..domain import Intent
 
-
 TARGET_FREQUENCIES: dict[Intent, float] = {
     Intent.LEFT: 8.0,
     Intent.RIGHT: 10.0,
