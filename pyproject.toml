@@ -15,6 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+ai = ["openai>=1.0"]
 bci = ["brainflow>=5.16,<6"]
 dev = ["pytest>=8.3,<9", "ruff>=0.8,<1"]
 
