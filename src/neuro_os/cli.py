@@ -6,6 +6,8 @@ from typing import Annotated
 import numpy as np
 import typer
 
+from neuro_os.ai.audit import AuditLog
+from neuro_os.ai.router import create_navigation_router
 from neuro_os.analysis import (
     analyze_session,
     analyze_trial,
@@ -14,7 +16,7 @@ from neuro_os.analysis import (
 )
 from neuro_os.calibration import collect_calibration_profile
 from neuro_os.decoders.ssvep import SSVEPDecoder
-from neuro_os.domain import Intent
+from neuro_os.domain import DecodedIntent, Intent
 from neuro_os.intent.safety import SafetyPolicy
 from neuro_os.preprocessing.filters import preprocess_eeg
 from neuro_os.preprocessing.quality import assess_signal_quality
@@ -221,6 +223,51 @@ def analyze_trial_command(
     payload = dataclasses.asdict(result)
     payload["analysis_file"] = str(output)
     typer.echo(json.dumps(payload, indent=2))
+
+
+
+@app.command("cortex-trial")
+def cortex_trial_command(
+    metadata: Annotated[Path, typer.Argument(exists=True, dir_okay=False)],
+    channels: Annotated[str | None, typer.Option()] = None,
+    mains_hz: Annotated[float, typer.Option(min=45.0, max=65.0)] = 50.0,
+    audit_log: Annotated[Path, typer.Option()] = Path(".neuros/audit/events.jsonl"),
+) -> None:
+    """Analyze one EEG trial and route its decoded intent through the AI Cortex."""
+    selected_channels = _parse_channels(channels)
+    analysis = analyze_trial(
+        metadata,
+        channel_names=selected_channels,
+        mains_hz=mains_hz,
+    )
+    event = DecodedIntent.create(
+        Intent(analysis.predicted_intent),
+        analysis.confidence,
+        f"trial:{analysis.trial_id}",
+    )
+    router = create_navigation_router(
+        audit_log=AuditLog(audit_log),
+    )
+    action = router.route(
+        event,
+        context={
+            "trial_id": analysis.trial_id,
+            "expected_intent": analysis.expected_intent,
+            "quality_acceptable": analysis.quality_acceptable,
+            "selected_channels": analysis.selected_channels,
+        },
+    )
+    typer.echo(
+        json.dumps(
+            {
+                "analysis": dataclasses.asdict(analysis),
+                "cortex_action": dataclasses.asdict(action),
+                "audit_log": str(audit_log),
+            },
+            indent=2,
+            default=str,
+        )
+    )
 
 
 @app.command("analyze-session")
