@@ -7,7 +7,12 @@ import numpy as np
 import typer
 
 from neuro_os.ai.audit import AuditLog
-from neuro_os.ai.router import create_navigation_router
+from neuro_os.ai.provider import (
+    CognitiveRequest,
+    OpenAIResponsesProvider,
+    OpenAIUnavailableError,
+)
+from neuro_os.ai.router import ActionStatus, create_navigation_router
 from neuro_os.analysis import (
     analyze_session,
     analyze_trial,
@@ -262,6 +267,89 @@ def cortex_trial_command(
             {
                 "analysis": dataclasses.asdict(analysis),
                 "cortex_action": dataclasses.asdict(action),
+                "audit_log": str(audit_log),
+            },
+            indent=2,
+            default=str,
+        )
+    )
+
+
+
+@app.command("ai-cortex")
+def ai_cortex_command(
+    metadata: Annotated[Path, typer.Argument(exists=True, dir_okay=False)],
+    prompt: Annotated[str, typer.Option(prompt=True)],
+    channels: Annotated[str | None, typer.Option()] = None,
+    mains_hz: Annotated[float, typer.Option(min=45.0, max=65.0)] = 50.0,
+    model: Annotated[str, typer.Option()] = "gpt-5.6-luna",
+    audit_log: Annotated[Path, typer.Option()] = Path(".neuros/audit/events.jsonl"),
+) -> None:
+    """Gate an explicit text prompt with a decoded EEG trial, then call the AI provider."""
+    selected_channels = _parse_channels(channels)
+    analysis = analyze_trial(
+        metadata,
+        channel_names=selected_channels,
+        mains_hz=mains_hz,
+    )
+    event = DecodedIntent.create(
+        Intent(analysis.predicted_intent),
+        analysis.confidence,
+        f"trial:{analysis.trial_id}",
+    )
+    router = create_navigation_router(
+        audit_log=AuditLog(audit_log),
+    )
+    action = router.route(
+        event,
+        context={
+            "trial_id": analysis.trial_id,
+            "expected_intent": analysis.expected_intent,
+            "quality_acceptable": analysis.quality_acceptable,
+            "selected_channels": analysis.selected_channels,
+        },
+    )
+    if action.status is not ActionStatus.EXECUTED or action.tool_name is None:
+        typer.echo(
+            json.dumps(
+                {
+                    "analysis": dataclasses.asdict(analysis),
+                    "cortex_action": dataclasses.asdict(action),
+                    "ai_called": False,
+                    "reason": "Cortex action was not executable",
+                },
+                indent=2,
+                default=str,
+            )
+        )
+        raise typer.Exit(code=2)
+
+    try:
+        provider = OpenAIResponsesProvider(model=model)
+        ai_response = provider.respond(
+            CognitiveRequest(
+                user_text=prompt,
+                intent=event.intent,
+                confidence=event.confidence,
+                action_name=action.tool_name,
+                context={
+                    "trial_id": analysis.trial_id,
+                    "expected_intent": analysis.expected_intent,
+                    "quality_acceptable": analysis.quality_acceptable,
+                    "selected_channels": list(analysis.selected_channels),
+                },
+            )
+        )
+    except OpenAIUnavailableError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+
+    typer.echo(
+        json.dumps(
+            {
+                "analysis": dataclasses.asdict(analysis),
+                "cortex_action": dataclasses.asdict(action),
+                "ai_called": True,
+                "ai_response": dataclasses.asdict(ai_response),
                 "audit_log": str(audit_log),
             },
             indent=2,
