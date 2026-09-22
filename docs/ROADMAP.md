@@ -7,7 +7,7 @@
 - [x] Confidence-bearing intent event
 - [x] Safety gate
 - [x] Unit tests
-- [ ] CI green on GitHub
+- [x] CI green on GitHub
 
 ## Phase 1 — Real EEG ingestion
 - [ ] BrainFlow adapter behind a source interface
