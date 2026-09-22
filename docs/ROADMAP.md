@@ -44,6 +44,8 @@
 - [x] Local replay/analysis loader for consented marker-aligned recordings
 
 ## Phase 3 — AI Cortex
+- [x] Privacy-bounded optional OpenAI Responses provider
+- [x] EEG trial -> decoded intent -> Cortex -> explicit text AI request pipeline
 - [x] Structured intent -> safety-aware tool router
 - [ ] Voice fallback
 - [ ] Confirmation UX (backend non-neural confirmation protocol complete)
