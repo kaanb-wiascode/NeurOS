@@ -1,11 +1,15 @@
 import json
+from pathlib import Path
 from typing import Annotated
 
 import typer
 
+from neuro_os.calibration import collect_calibration_profile
 from neuro_os.decoders.ssvep import SSVEPDecoder
 from neuro_os.domain import Intent
 from neuro_os.intent.safety import SafetyPolicy
+from neuro_os.preprocessing.filters import preprocess_eeg
+from neuro_os.preprocessing.quality import assess_signal_quality
 from neuro_os.sources.brainflow import (
     BrainFlowSource,
     BrainFlowSourceConfig,
@@ -21,7 +25,7 @@ def simulate(
     intent: Annotated[Intent, typer.Option(case_sensitive=False)] = Intent.SELECT,
     high_impact_action: Annotated[bool, typer.Option()] = False,
 ) -> None:
-    """Run the synthetic EEG -> decoder -> safety-gate pipeline."""
+    """Run synthetic EEG through quality, preprocessing, decoding, and safety."""
     source = SyntheticSSVEPSource(intent)
     source.open()
     try:
@@ -29,7 +33,25 @@ def simulate(
     finally:
         source.close()
 
-    event = SSVEPDecoder().decode(frame.data[0])
+    quality = assess_signal_quality(frame)
+    if not quality.acceptable:
+        typer.echo(
+            json.dumps(
+                {
+                    "requested_intent": intent.value,
+                    "decoded_intent": Intent.UNKNOWN.value,
+                    "source": frame.source,
+                    "safety_decision": "REJECT",
+                    "reason": "signal-quality gate rejected the frame",
+                    "rejected_channels": quality.rejected_channels,
+                },
+                indent=2,
+            )
+        )
+        raise typer.Exit(code=2)
+
+    filtered = preprocess_eeg(frame)
+    event = SSVEPDecoder().decode(filtered.data[0])
     safety = SafetyPolicy().evaluate(event, high_impact_action=high_impact_action)
     typer.echo(
         json.dumps(
@@ -37,9 +59,38 @@ def simulate(
                 "requested_intent": intent.value,
                 "decoded_intent": event.intent.value,
                 "confidence": round(event.confidence, 4),
-                "source": frame.source,
+                "source": filtered.source,
+                "quality_acceptable": quality.acceptable,
                 "safety_decision": safety.decision.value,
                 "reason": safety.reason,
+            },
+            indent=2,
+        )
+    )
+
+
+@app.command("calibrate-synthetic")
+def calibrate_synthetic(
+    intent: Annotated[Intent, typer.Option(case_sensitive=False)] = Intent.SELECT,
+    frame_count: Annotated[int, typer.Option(min=1, max=100)] = 5,
+    duration_seconds: Annotated[float, typer.Option(min=0.5, max=30.0)] = 2.0,
+    output: Annotated[Path, typer.Option()] = Path(".neuros/calibration/synthetic.json"),
+) -> None:
+    """Create a local calibration-profile example without EEG hardware."""
+    profile = collect_calibration_profile(
+        SyntheticSSVEPSource(intent),
+        frame_count=frame_count,
+        duration_seconds=duration_seconds,
+    )
+    profile.save(output)
+    typer.echo(
+        json.dumps(
+            {
+                "output": str(output),
+                "sample_rate_hz": profile.sample_rate_hz,
+                "channels": profile.channel_names,
+                "frame_count": profile.frame_count,
+                "duration_seconds": profile.duration_seconds,
             },
             indent=2,
         )
