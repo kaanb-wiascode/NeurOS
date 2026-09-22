@@ -2,23 +2,14 @@
 
 NeurOS is a safety-first, non-invasive BCI + AI research prototype.
 
-## Current goal
+## Current pipeline
 
-Build the software path before purchasing EEG hardware:
-
-`EEG source -> signal decoder -> structured intent -> safety gate -> AI/action adapter`
+`EEG source -> signal quality -> preprocessing -> decoder -> structured intent -> safety gate -> AI/action adapter`
 
 The project does **not** claim to read arbitrary thoughts. It classifies explicitly
 calibrated signal classes and exposes confidence and provenance.
 
-## Phase 0 — simulated intent pipeline
-
-Initial SSVEP targets:
-
-- 8 Hz -> LEFT
-- 10 Hz -> RIGHT
-- 12 Hz -> SELECT
-- 15 Hz -> BACK
+## Synthetic end-to-end demo
 
 ```bash
 python -m venv .venv
@@ -28,20 +19,38 @@ neuro-os simulate --intent SELECT
 pytest
 ```
 
-## Phase 1 — EEG acquisition abstraction
+The simulation now exercises signal-quality checks, zero-phase filtering, decoding, and
+the safety gate.
 
-NeurOS now has a source contract (`EEGSource` / `EEGFrame`) and an optional BrainFlow
-adapter. BrainFlow is not required for the core test suite.
+## Local calibration profile demo
 
-To exercise BrainFlow without physical hardware, use its synthetic board:
+```bash
+neuro-os calibrate-synthetic --intent SELECT --frame-count 5
+```
+
+Profiles are written under `.neuros/` by default and are excluded from Git. They contain
+descriptive baseline statistics rather than claims about thoughts or mental state.
+
+## BrainFlow acquisition
 
 ```bash
 pip install -e ".[bci,dev]"
 neuro-os brainflow-smoke --board-id -1 --duration-seconds 1
 ```
 
-Physical board configuration will be added only after a supported non-invasive device is
-selected and locally calibrated.
+Board `-1` uses BrainFlow's synthetic board, allowing the acquisition lifecycle to be
+tested without physical EEG hardware.
+
+## Phase 2 browser stimulus
+
+```bash
+python -m http.server 8080 --directory apps/ssvep-stimulus
+```
+
+Open `http://localhost:8080` to run the four-target SSVEP calibration prototype.
+
+The page intentionally produces visual flicker and includes a visible flashing-light
+warning. Actual monitor timing must be validated before research-quality EEG collection.
 
 ## Principles
 
@@ -49,8 +58,9 @@ selected and locally calibrated.
 2. No brain stimulation or implant workflow.
 3. No autonomous high-impact actions from neural signals.
 4. Every decoded intent carries confidence and provenance.
-5. Low-confidence or poor-quality events are rejected.
+5. Poor-quality, unsupported, or low-confidence events are rejected.
 6. Sensitive actions require explicit non-neural confirmation.
-7. Raw EEG is treated as sensitive biometric data and is excluded from Git by default.
+7. Raw EEG and local calibration state remain local by default.
 
-See `docs/ARCHITECTURE.md`, `docs/BRAINFLOW.md`, `docs/SAFETY.md`, and `docs/ROADMAP.md`.
+See `docs/ARCHITECTURE.md`, `docs/BRAINFLOW.md`, `docs/SAFETY.md`,
+`docs/ROADMAP.md`, and `apps/ssvep-stimulus/README.md`.
