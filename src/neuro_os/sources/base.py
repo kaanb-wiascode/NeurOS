@@ -35,6 +35,24 @@ class EEGFrame:
         return self.sample_count / self.sample_rate_hz
 
 
+@dataclass(frozen=True, slots=True)
+class MarkedEEGFrame(EEGFrame):
+    markers: np.ndarray
+
+    def __post_init__(self) -> None:
+        super().__post_init__()
+        if self.markers.ndim != 1:
+            raise ValueError("markers must be a 1-D sample-aligned array")
+        if self.markers.size != self.sample_count:
+            raise ValueError("markers must have one value per EEG sample")
+        if not np.all(np.isfinite(self.markers)):
+            raise ValueError("markers contain non-finite values")
+
+    @property
+    def marker_sample_indices(self) -> tuple[int, ...]:
+        return tuple(int(index) for index in np.flatnonzero(self.markers))
+
+
 @runtime_checkable
 class EEGSource(Protocol):
     @property
@@ -51,3 +69,12 @@ class EEGSource(Protocol):
     def close(self) -> None: ...
 
     def read(self, duration_seconds: float) -> EEGFrame: ...
+
+
+@runtime_checkable
+class MarkerEEGSource(EEGSource, Protocol):
+    def insert_marker(self, value: float) -> None: ...
+
+    def clear_buffer(self) -> None: ...
+
+    def drain_marked(self, *, settle_seconds: float = 0.0) -> MarkedEEGFrame: ...
