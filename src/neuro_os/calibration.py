@@ -6,7 +6,7 @@ from typing import Any
 
 import numpy as np
 
-from neuro_os.sources.base import EEGFrame
+from neuro_os.sources.base import EEGFrame, EEGSource
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +33,29 @@ class CalibrationProfile:
         destination = Path(path)
         destination.parent.mkdir(parents=True, exist_ok=True)
         destination.write_text(self.to_json() + "\n", encoding="utf-8")
+
+
+def collect_calibration_profile(
+    source: EEGSource,
+    *,
+    frame_count: int = 5,
+    duration_seconds: float = 2.0,
+) -> CalibrationProfile:
+    """Collect local windows from an EEGSource and build a descriptive baseline."""
+    if frame_count < 1:
+        raise ValueError("frame_count must be positive")
+    if duration_seconds <= 0:
+        raise ValueError("duration_seconds must be positive")
+
+    frames: list[EEGFrame] = []
+    source.open()
+    try:
+        for _ in range(frame_count):
+            frames.append(source.read(duration_seconds))
+    finally:
+        source.close()
+
+    return build_calibration_profile(frames)
 
 
 def build_calibration_profile(frames: list[EEGFrame]) -> CalibrationProfile:
